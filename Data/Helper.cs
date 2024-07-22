@@ -69,7 +69,7 @@ public class Helper
     return ["Full Time", "Part Time", "Coop"];
   }
 
-  public static List<Student> getStudents()
+  public static List<Student> GetStudents()
   {
     Random random = new Random();
 
