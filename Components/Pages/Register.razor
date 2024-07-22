@@ -12,14 +12,17 @@
 @code {
     [Parameter]
     public int StudentId {get;set;}
-    private List<Student> students = Helper.GetStudents();
-    private Student student;
+    private Student? student;
+    
     protected override void OnInitialized()
     {
+        var students = Helper.GetStudents();
         student = students.FirstOrDefault(s => s.Id == StudentId);
-        if(student == null)
+        @* Console.WriteLine(StudentId); *@
+        @* Console.WriteLine(student); *@
+        if (student == null)
         {
-            Navigator.NavigateTo("/register");
+            Navigator.NavigateTo("/");
         }
     }
 }
