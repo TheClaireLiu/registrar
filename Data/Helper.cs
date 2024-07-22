@@ -68,4 +68,39 @@ public class Helper
   public static List<string> GetStudentTypes () {
     return ["Full Time", "Part Time", "Coop"];
   }
+
+  public static List<Student> getStudents()
+  {
+    Random random = new Random();
+
+    List<Student> students = [];
+    Student student = new Student
+    {
+      Id = random.Next(100000,1000000),
+      FirstName = "John",
+      LastName = "Smith",
+      Type = "Full Time"
+    };
+    students.Add(student);
+
+    student = new Student
+    {
+      Id = random.Next(100000,1000000),
+      FirstName = "Martha",
+      LastName = "Joes",
+      Type = "Part Time"
+    };
+    students.Add(student);
+
+    student = new Student
+    {
+      Id = random.Next(100000,1000000),
+      FirstName = "Rose",
+      LastName = "Tyler",
+      Type = "Coop"
+    };
+    students.Add(student);
+
+    return students;
+  }
 }
