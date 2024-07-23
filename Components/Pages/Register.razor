@@ -1,10 +1,11 @@
 ﻿@page "/register/{StudentId:int}"
 @inject NavigationManager Navigator;
+@rendermode InteractiveServer
 
-<PageTitle>RegisterStudents</PageTitle>
+<PageTitle>Register Students</PageTitle>
 <h3 class="display-6 fw-normal">Register Student</h3>
 
-@if(student!= null)
+@if(student != null)
 {
     <form class="form border border-1 bg-light p-5 b-5 mt-2">
         <h5 class="fs-2">@student.FirstName @student.LastName - @student.Id</h5>
@@ -17,16 +18,19 @@
             </div>
         }
         <div class="mt-4">
-            <button type="button" class="btn btn-primary me-3" onclick="location.href='/'">Register Student</button>
-            <button type="button" class="btn btn-secondary" onclick="location.href='/'">Cancel</button>
+            <button type="button" class="btn btn-primary me-3" @onclick="RegisterStudent">Register Student</button>
+            <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancel</button>
         </div>
     </form>
 }
-
+else
+{
+    <p>No student found.</p>
+}
 
 @code {
     [Parameter]
-    public int StudentId {get;set;}
+    public int StudentId { get; set; }
     private Student? student;
     private List<Course> courses = Helper.GetCourses();
 
@@ -34,11 +38,21 @@
     {
         var students = Helper.GetStudents();
         student = students.FirstOrDefault(s => s.Id == StudentId);
-        @* Console.WriteLine(StudentId); *@
-        @* Console.WriteLine(student); *@
         if (student == null)
         {
             Navigator.NavigateTo("/");
         }
+    }
+
+    private void RegisterStudent(MouseEventArgs e)
+    {
+        Console.WriteLine("Register Student clicked");
+        Navigator.NavigateTo("/");
+    }
+
+    private void Cancel(MouseEventArgs e)
+    {
+        Console.WriteLine("Cancel clicked");
+        Navigator.NavigateTo("/");
     }
 }
