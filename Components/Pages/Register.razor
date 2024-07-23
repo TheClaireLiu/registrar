@@ -4,36 +4,25 @@
 <PageTitle>RegisterStudents</PageTitle>
 <h3 class="display-6 fw-normal">Register Student</h3>
 
-<form class="form border border-1 bg-light p-5 b-5 mt-2">
-    <h5 class="fs-2">@student.FirstName @student.LastName - @student.Id</h5>
-    <p class="mt-5">The following courses are currently available for registration:</p>
-    <div class="mb-2">
-        <input type="checkbox" class="me-3">@courses[0].Code @courses[0].Title - @courses[0].WeeklyHours hours per week
-    </div>
-    <div class="mb-2">
-        <input type="checkbox" class="me-3">@courses[1].Code @courses[1].Title - @courses[1].WeeklyHours hours per week
-    </div>
-    <div class="mb-2">
-        <input type="checkbox" class="me-3">@courses[2].Code @courses[2].Title - @courses[2].WeeklyHours hours per week
-    </div>
-    <div class="mb-2">
-        <input type="checkbox" class="me-3">@courses[3].Code @courses[3].Title - @courses[3].WeeklyHours hours per week
-    </div>
-    <div class="mb-2">
-        <input type="checkbox" class="me-3">@courses[4].Code @courses[4].Title - @courses[4].WeeklyHours hours per week
-    </div>
-    <div class="mb-2">
-        <input type="checkbox" class="me-3">@courses[5].Code @courses[5].Title - @courses[5].WeeklyHours hours per week
-    </div>
-    <div class="mb-2">
-        <input type="checkbox" class="me-3">@courses[6].Code @courses[6].Title - @courses[6].WeeklyHours hours per week
-    </div>
-    
-    <div class="mt-4">
-        <button type="button" class="btn btn-primary me-3" onclick="location.href='/'">Register Student</button>
-        <button type="button" class="btn btn-secondary" onclick="location.href='/'">Cancel</button>
-    </div>
-</form>
+@if(student!= null)
+{
+    <form class="form border border-1 bg-light p-5 b-5 mt-2">
+        <h5 class="fs-2">@student.FirstName @student.LastName - @student.Id</h5>
+        <p class="mt-5">The following courses are currently available for registration:</p>
+
+        @foreach(var course in courses)
+        {
+            <div class="mb-2">
+                <input type="checkbox" class="me-3">@course.Code @course.Title - @course.WeeklyHours hours per week
+            </div>
+        }
+        <div class="mt-4">
+            <button type="button" class="btn btn-primary me-3" onclick="location.href='/'">Register Student</button>
+            <button type="button" class="btn btn-secondary" onclick="location.href='/'">Cancel</button>
+        </div>
+    </form>
+}
+
 
 @code {
     [Parameter]
