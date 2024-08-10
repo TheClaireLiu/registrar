@@ -1,5 +1,6 @@
 ﻿
 @page "/register/{StudentId:int}"
+@rendermode InteractiveServer
 @inject NavigationManager Navigator;
 
 <PageTitle>RegisterStudents</PageTitle>
@@ -13,13 +14,14 @@
     [Parameter]
     public int StudentId {get;set;}
     private List<Student> students = Helper.GetStudents();
-    private Student student;
+    private Student? student;
     protected override void OnInitialized()
     {
+        
         student = students.FirstOrDefault(s => s.Id == StudentId);
         if(student == null)
         {
-            Navigator.NavigateTo("/register");
+            Navigator.NavigateTo("/");
         }
     }
 }

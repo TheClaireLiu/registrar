@@ -27,7 +27,9 @@
                 <td>@student.LastName</td>
                 <td>@student.Type</td>
                 <td>
-                    <a href="/register/@student.Id" class="text-decoration-none">Register</a>
+                    @* <NavLink class="text-decoration-none" href="/register/@student.Id">Register</NavLink> *@
+                    <NavLink class="text-decoration-none">Register</NavLink>
+                    <p>123</p>
                 </td>
             </tr>
         }
@@ -38,5 +40,5 @@
     
     private List<Student> students = Helper.GetStudents();
 
-    
+
 }
