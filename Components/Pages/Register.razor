@@ -1,27 +1,265 @@
-﻿
-@page "/register/{StudentId:int}"
-@rendermode InteractiveServer
+﻿@page "/register/{StudentId:int}"
 @inject NavigationManager Navigator;
+@rendermode InteractiveServer
+@inject IConfiguration Config
 
-<PageTitle>RegisterStudents</PageTitle>
+<PageTitle>Register Students</PageTitle>
 <h3 class="display-6 fw-normal">Register Student</h3>
 
-<form class="form border border-1 bg-light p-5 b-5 mt-5">
-    <p>@StudentId</p>
-</form>
+<EditForm class="form border border-1 bg-light p-5 b-5 mt-2"
+          Model="Registers"
+          OnValidSubmit="CustomValidation"
+          FormName="StudentRegisterForm" Enhance>
+    
+    <DataAnnotationsValidator/>
+    <CustomValidation @ref="customValidation"/>
+    <ValidationSummary/>
+
+    @if (success)
+    {
+        <div class="alert alert-success">@successMessage</div>
+    }
+    <h5 class="fs-2">@Registers.studentFirstName @Registers.studentLastName - @Registers.studentId</h5>
+    <p class="mt-5">The following courses are currently available for registration:</p>
+
+    @foreach (var register in Registers.Courses)
+    {
+        <div class="mb-2">
+            <InputCheckbox @bind-Value="register.CourseIsChecked" type="checkbox" class="me-3" id="@register.CourseCode"/>@register.CourseCode @register.CourseTitle - @register.CourseWeeklyHours hours per week
+        </div>
+    }
+    <div class="mt-4">
+        <button type="submit" class="btn btn-primary me-3">Register Student</button>
+        <button type="button" class="btn btn-secondary"  @onclick="Cancel">Cancel</button>
+    </div>
+</EditForm>
 
 @code {
-    [Parameter]
-    public int StudentId {get;set;}
-    private List<Student> students = Helper.GetStudents();
+    private string? connectionString;
+    private CustomValidation? customValidation;
+    [Parameter] public int StudentId { get; set; }
+    
+    private List<Course> courses = [];
     private Student? student;
-    protected override void OnInitialized()
+    private bool success = false;
+    private string successMessage = "";
+    
+    private class RegisterModel
     {
-        
-        student = students.FirstOrDefault(s => s.Id == StudentId);
-        if(student == null)
+        public int studentId { get; set; } 
+        public string studentFirstName { get; set; } = "";
+        public string studentLastName { get; set; } = "";
+        public string? studentType { get; set; }
+        public List<CheckboxItem> Courses { get; set; } = new List<CheckboxItem>();
+    }
+    [SupplyParameterFromForm] private RegisterModel Registers { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        connectionString = Config.GetConnectionString("default");
+        student  = await GetStudentAsync(StudentId); //studentId 对应的student
+        if (student == null)
         {
-            Navigator.NavigateTo("/");
+            throw new InvalidOperationException("Student not found.");
         }
+        courses  = await GetCoursesAsync(); //数据库的课程列表
+        // Console.WriteLine($"On register.razor on InitializedAsync courses.Count: {courses.Count}");
+
+        Registers.studentId = StudentId;
+        Registers.studentLastName = student.LastName;
+        Registers.studentFirstName = student.FirstName;
+        Registers.studentType = student.Type;
+        
+        foreach (var course in courses)
+        {
+            Registers.Courses.Add(
+                new CheckboxItem
+                {
+                    CourseCode = course.Code,
+                    CourseTitle = course.Title,
+                    CourseWeeklyHours = course.WeeklyHours,
+                    CourseIsChecked = await IsCourseRegisteredAsync(StudentId, course.Code)
+                }
+            );
+        }
+        
+    }
+
+    private async Task CustomValidation()
+    {
+        customValidation?.ClearErrors();
+        var errors = new Dictionary<string, List<string>>();
+        List<string> selectedCourses = [];
+        int TotalCourseWeeklyHours = 0;
+        foreach (var course in Registers.Courses)
+        {
+            if (course.CourseIsChecked)
+            {
+                selectedCourses.Add(course.CourseCode);
+                TotalCourseWeeklyHours += course.CourseWeeklyHours;
+            }
+        }
+        int TotalCourses = selectedCourses.Count;
+        Console.WriteLine($"TotalCourses: {TotalCourses}");
+        Console.WriteLine($"TotalCourseWeeklyHours: {TotalCourseWeeklyHours}");
+
+        switch (Registers.studentType)
+        {
+            case "Full Time":
+                if (TotalCourseWeeklyHours > 16)
+                {
+                    errors.Add(nameof(Registers.Courses), new() { "Full-Time Students can only register for a maximum 16 hours per week." });
+                }
+                break;
+            case "Part Time":
+                if (TotalCourses > 3)
+                {
+                    errors.Add(nameof(Registers.Courses), new() { "Part-Time students can only register for a maximum of 3 courses." });
+                }
+                break;
+            case "Coop":
+                if (TotalCourses > 2 || TotalCourseWeeklyHours > 4 )
+                {
+                    errors.Add(nameof(Registers.Courses), new() { "Coop students can only register for a maximum of 2 courses and a maximum of 4 hours per week." });
+                }
+                break;    
+        }
+        if (errors.Any())
+        {
+            //Display errors
+            customValidation?.DisplayErrors(errors);
+        }
+        else
+        {
+            await RegisterStudent(selectedCourses,TotalCourses,TotalCourseWeeklyHours);
+        }
+    }
+
+    private async Task RegisterStudent(List<string> selectedCourses,int totalCourses,int totalCourseWeeklyHours)
+    {
+        using (var conn = new MySqlConnection(connectionString))
+        {
+            var sql = "DELETE FROM Registration WHERE StudentId = @StudentId";
+            await conn.ExecuteAsync(sql,new { StudentId = StudentId });
+            
+            foreach (var course in selectedCourses)
+            {
+                var courseId = await GetCourseIdAsync(course);
+                
+                // Console.WriteLine($"On Register.razor courseId:{courseId}");
+                
+                var insertSql = "INSERT INTO Registration (StudentId, CourseId) VALUES (@StudentId, @CourseId)";
+                var result = await conn.ExecuteAsync(insertSql, new { StudentId = StudentId, CourseId = courseId });
+                
+                foreach (var courseModel in Registers.Courses)
+                {
+                    if (courseModel.CourseCode == course)
+                    {
+                        courseModel.CourseIsChecked = true;
+                        
+                    }
+                }
+            }
+        }
+        // foreach (var courseModel in Registers.Courses)
+        // {
+        //     Console.WriteLine($"{courseModel.CourseCode} courseIsChecked: {courseModel.CourseIsChecked}");
+        // }
+        
+        success = true;
+        successMessage = $"The students has been registered for {totalCourses} course(s), {totalCourseWeeklyHours} hours weekly.";
+    }
+    
+    private async Task<bool> IsCourseRegisteredAsync(int studentId, string courseCode)
+    {
+        using (var conn = new MySqlConnection(connectionString))
+        {
+            var sql = "SELECT COUNT(1) FROM Registration WHERE StudentId = @StudentId AND CourseId = (SELECT Id FROM Course WHERE Code = @CourseCode)";
+            var count = await conn.ExecuteScalarAsync<int>(sql, new { StudentId = studentId, CourseCode = courseCode });
+            return count > 0;
+        }
+    }
+    
+    //get courses from database
+    private async Task<List<Course>> GetCoursesAsync()
+    {
+        try
+        {
+            using (var conn = new MySqlConnection(connectionString))
+            {
+                var sql = "SELECT * from Course";
+                var rows = await conn.QueryAsync<Course>(sql);
+                return rows.ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"An error occurred: {ex.Message}");
+            return new List<Course>();
+        }
+    }
+    //get a student object by studentId
+    private async Task<Student> GetStudentAsync(int id)
+    {
+        using (var conn = new MySqlConnection(connectionString))
+        {
+            //query single async查询单异步
+            try
+            {
+                var sql = "SELECT * FROM Student WHERE Id = @Id";
+                return await conn.QuerySingleAsync<Student>(sql, new { Id = id });
+            }
+            catch (InvalidOperationException ex)
+            {
+                Console.WriteLine(ex.Message);
+                throw;
+            }
+        }
+    }
+    //get a courseId by courseCode
+    private async Task<int> GetCourseIdAsync(string courseCode)
+    {
+        using (var conn = new MySqlConnection(connectionString))
+        {
+            try
+            {
+                var sql = "SELECT Id FROM Course WHERE Code = @Code";
+                return await conn.QuerySingleAsync<int>(sql, new { Code = courseCode });
+            }
+            catch (InvalidOperationException ex)
+            {
+                Console.WriteLine($"Course with code {courseCode} not found: {ex.Message}");
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An error occurred: {ex.Message}");
+                throw;
+            }
+        }
+    }
+    //get a course by courseId
+    private async Task<Course> GetCourseAsync(int id)
+    {
+        using (var conn = new MySqlConnection(connectionString))
+        {
+            //query single async查询单异步
+            try
+            {
+                var sql = "SELECT * FROM Course WHERE Id = @Id";
+                return await conn.QuerySingleAsync<Course>(sql, new { Id = id });
+            }
+            catch (InvalidOperationException ex)
+            {
+                Console.WriteLine(ex.Message);
+                throw;
+            }
+        }
+    }
+    
+    private void Cancel(MouseEventArgs e)
+    {
+        Console.WriteLine("Cancel clicked");
+        Navigator.NavigateTo("/");
     }
 }
